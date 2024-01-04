@@ -1,0 +1,45 @@
+Start installing ROSA HCP cluster test-mplax-2401041825 in a Multi-AZ ...
+{
+    "UserId": "AIDA3FC7DJTVC5PV7VPO4",
+    "Account": "766851108074",
+    "Arn": "arn:aws:iam::766851108074:user/open-environment-9rtr8-admin"
+}
+{
+    "Role": {
+        "Path": "/aws-service-role/elasticloadbalancing.amazonaws.com/",
+        "RoleName": "AWSServiceRoleForElasticLoadBalancing",
+        "RoleId": "AROA3FC7DJTVKRBCY5NUS",
+        "Arn": "arn:aws:iam::766851108074:role/aws-service-role/elasticloadbalancing.amazonaws.com/AWSServiceRoleForElasticLoadBalancing",
+        "CreateDate": "2019-09-16T01:51:23+00:00",
+        "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "elasticloadbalancing.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        },
+        "Description": "Allows ELB to call AWS services on your behalf.",
+        "MaxSessionDuration": 3600,
+        "RoleLastUsed": {
+            "LastUsedDate": "2024-01-04T11:33:09+00:00",
+            "Region": "us-east-2"
+        }
+    }
+}
+#
+#
+Creating the VPC  vpc-0060bd5462dac970d
+VPC_ID_VALUE  vpc-0060bd5462dac970d
+Listing all the availability zones inside the us-east-2: us-east-2a us-east-2b us-east-2c
+Creating the Public and Private Subnets
+Creating the Public Subnet PUBLIC_SUB_US_EAST_2A
+Creating the Private Subnet PRIV_SUB_US_EAST_2A
+Creating the Public Subnet PUBLIC_SUB_US_EAST_2B
+Creating the Private Subnet PRIV_SUB_US_EAST_2B
+Creating the Public Subnet PUBLIC_SUB_US_EAST_2C
+Creating the Private Subnet PRIV_SUB_US_EAST_2C
