@@ -169,8 +169,8 @@ aws ec2 create-tags --resources $PUBLIC_RT_ID --tags Key=Name,Value=$CLUSTER_NAM
 EIP_ADDRESS=$(aws ec2 allocate-address --domain vpc --query AllocationId --output text)
 NAT_GATEWAY_ID=$(aws ec2 create-nat-gateway --subnet-id $PUBLIC_SUB_2a --allocation-id $EIP_ADDRESS --query NatGateway.NatGatewayId --output text)
 echo "Creating the NGW: " $NAT_GATEWAY_ID 2>&1 |tee -a $CLUSTER_LOG
-echo "Waiting for NGW to warm up " 2>&1 |tee -a $CLUSTER_LOG
-sleep 120
+echo "Waiting 120 sec. for NGW to warm up " 2>&1 |tee -a $CLUSTER_LOG
+sleep 120 | pv -t
 aws ec2 create-tags --resources $EIP_ADDRESS  --resources $NAT_GATEWAY_ID --tags Key=Name,Value=$CLUSTER_NAME-NAT-GW
 #
 PRIVATE_RT_ID1=$(aws ec2 create-route-table --no-cli-pager --vpc-id $VPC_ID_VALUE --query RouteTable.RouteTableId --output text)
@@ -288,8 +288,8 @@ for pubsnt in ${!AZ_PAIRED_ARRAY[@]}
 	NAT_GATEWAY_ID=$(aws ec2 create-nat-gateway --subnet-id $pubsnt --allocation-id $EIP_ADDRESS --query NatGateway.NatGatewayId --output text)
 	echo "EIP_ADDRESS " $EIP_ADDRESS 2>&1 >> $CLUSTER_LOG
 	echo "Creating the NGW: " $NAT_GATEWAY_ID 2>&1 |tee -a $CLUSTER_LOG
-	echo "Waiting for NGW to warm up " 2>&1 |tee -a $CLUSTER_LOG
-	sleep 120
+	echo "Waiting for 120 sec. NGW to warm up " 2>&1 |tee -a $CLUSTER_LOG
+	sleep 120 |pv -t
 	aws ec2 create-tags --resources $EIP_ADDRESS  --resources $NAT_GATEWAY_ID --tags Key=Name,Value=$CLUSTER_NAME-NAT-GW
 	PRIVATE_RT_ID=$(aws ec2 create-route-table --no-cli-pager --vpc-id $VPC_ID_VALUE --query RouteTable.RouteTableId --output text)
 	echo "Creating the Private Route Table: " $PRIVATE_RT_ID 2>&1 |tee -a $CLUSTER_LOG
