@@ -295,27 +295,9 @@ for pubsnt in ${!AZ_PAIRED_ARRAY[@]}
 	echo "Creating the Private Route Table: " $PRIVATE_RT_ID 2>&1 |tee -a $CLUSTER_LOG
 	aws ec2 associate-route-table --subnet-id ${AZ_PAIRED_ARRAY[$pubsnt]} --route-table-id $PRIVATE_RT_ID 2>&1 >> $CLUSTER_LOG 2>&1 >> $CLUSTER_LOG
 	aws ec2 create-tags --resources $PRIVATE_RT_ID $EIP_ADDRESS --tags Key=Name,Value=$CLUSTER_NAME-private-rtb${i} 2>&1 >> $CLUSTER_LOG
-	i=$(($i++))
+	i=$(($i++1))
 done
 unset i
-#
-#PRIVATE_RT_ID1=$(aws ec2 create-route-table --no-cli-pager --vpc-id $VPC_ID_VALUE --query RouteTable.RouteTableId --output text)
-#echo "Creating the Private Route Table: " $PRIVATE_RT_ID1 2>&1 |tee -a $CLUSTER_LOG
-#aws ec2 create-route --route-table-id $PRIVATE_RT_ID1 --destination-cidr-block 0.0.0.0/0 --gateway-id $NAT_GATEWAY_ID 2>&1 >> $CLUSTER_LOG
-#aws ec2 associate-route-table --subnet-id $PRIV_SUB_2a --route-table-id $PRIVATE_RT_ID1 2>&1 >> $CLUSTER_LOG 2>&1 >> $CLUSTER_LOG
-#aws ec2 create-tags --resources $PRIVATE_RT_ID1 $EIP_ADDRESS --tags Key=Name,Value=$CLUSTER_NAME-private2a-rtb 2>&1 >> $CLUSTER_LOG
-##
-#PRIVATE_RT_ID2=$(aws ec2 create-route-table --no-cli-pager --vpc-id $VPC_ID_VALUE --query RouteTable.RouteTableId --output text)
-#echo "Creating the Private Route Table: " $PRIVATE_RT_ID2 2>&1 |tee -a $CLUSTER_LOG
-#aws ec2 create-route --route-table-id $PRIVATE_RT_ID2 --destination-cidr-block 0.0.0.0/0 --gateway-id $NAT_GATEWAY_ID 2>&1 >> $CLUSTER_LOG
-#aws ec2 associate-route-table --subnet-id $PRIV_SUB_2b --route-table-id $PRIVATE_RT_ID2 2>&1 >> $CLUSTER_LOG
-#aws ec2 create-tags --resources $PRIVATE_RT_ID2 $EIP_ADDRESS --tags Key=Name,Value=$CLUSTER_NAME-private2b-rtb
-##
-#PRIVATE_RT_ID3=$(aws ec2 create-route-table --no-cli-pager --vpc-id $VPC_ID_VALUE --query RouteTable.RouteTableId --output text)
-#echo "Creating the Private Route Table: " $PRIVATE_RT_ID3 2>&1 |tee -a $CLUSTER_LOG
-#aws ec2 create-route --route-table-id $PRIVATE_RT_ID3 --destination-cidr-block 0.0.0.0/0 --gateway-id $NAT_GATEWAY_ID
-#aws ec2 associate-route-table --subnet-id $PRIV_SUB_2c --route-table-id $PRIVATE_RT_ID3 2>&1 >> $CLUSTER_LOG
-#aws ec2 create-tags --resources $PRIVATE_RT_ID3 $EIP_ADDRESS --tags Key=Name,Value=$CLUSTER_NAME-private2c-rtb
 #
 echo "#" 2>&1 |tee -a $CLUSTER_LOG
 echo "VPC creation ... done! " 2>&1 |tee -a $CLUSTER_LOG
