@@ -244,7 +244,7 @@ aws ec2 modify-vpc-attribute --vpc-id $VPC_ID_VALUE --enable-dns-hostnames
 AZ_ARRAY=($(aws ec2 describe-availability-zones --region $AWS_REGION|jq -r '.AvailabilityZones[].ZoneName'|tr '\n' ' '))
 AZ_PUB_ARRAY=()
 AZ_PRIV_ARRAY=()
-declare -A AZ_PAIRED_ARRAY
+#declare -A AZ_PAIRED_ARRAY - moved out of the function, otherwise it won't work if called elsewhere in the script
 x=0
 y=128
 echo "Listing all the availability zones inside the $AWS_REGION: ${AZ_ARRAY[@]}" 2>&1 >> $CLUSTER_LOG
@@ -255,13 +255,13 @@ for az in ${AZ_ARRAY[@]}
 	export AZP=$(echo $az| sed -e 's/\(.*\)/\U\1/g;s/-/_/g')
 	export PUBLIC_SUB_NAME=PUBLIC_SUB_${AZP}
 	export PRIV_SUB_NAME=PRIV_SUB_${AZP}
-	echo "Creating the Public Subnet ${!PUBLIC_SUB_NAME} in availability zone $az" 2>&1 |tee -a $CLUSTER_LOG
         declare PUBLIC_SUB_${AZP}=$(aws ec2 create-subnet --vpc-id $VPC_ID_VALUE --cidr-block 10.0.${x}.0/20 --availability-zone ${az} --query Subnet.SubnetId --output text) 2>&1 >> $CLUSTER_LOG
+	echo "Creating the Public Subnet ${!PUBLIC_SUB_NAME} in availability zone $az" 2>&1 |tee -a $CLUSTER_LOG
 	aws ec2 create-tags --resources ${!PUBLIC_SUB_NAME} --tags Key=Name,Value=$CLUSTER_NAME-public 2>&1 >> $CLUSTER_LOG
 	x=$(($x ++16))
 	AZ_PUB_ARRAY+=(${!PUBLIC_SUB_NAME})
-	echo "Creating the Private Subnet ${!PRIV_SUB_NAME} in availability zone $az" 2>&1 |tee -a $CLUSTER_LOG
         declare PRIV_SUB_${AZP}=$(aws ec2 create-subnet --vpc-id $VPC_ID_VALUE --cidr-block 10.0.${y}.0/20 --availability-zone ${az} --query Subnet.SubnetId --output text)
+	echo "Creating the Private Subnet ${!PRIV_SUB_NAME} in availability zone $az" 2>&1 |tee -a $CLUSTER_LOG
         aws ec2 create-tags --resources ${!PRIV_SUB_NAME} --tags Key=Name,Value=$CLUSTER_NAME-private 2>&1 >> $CLUSTER_LOG
         y=$(($y ++16))
 	AZ_PRIV_ARRAY+=(${!PRIV_SUB_NAME})
@@ -525,8 +525,9 @@ echo "Start installing ROSA HCP cluster $CLUSTER_NAME in a Multi-AZ ..." 2>&1 |t
 AWS_REGION=$(cat ~/.aws/config|grep region|awk '{print $3}')
 echo "#"
 #
+## Associative array must be declared out of MultiAZ-VPC function, otherwise the whole cycle won't work
+declare -A AZ_PAIRED_ARRAY
 MultiAZ-VPC
-exit
 #
 echo "#" 2>&1 |tee -a $CLUSTER_LOG
 echo "Going to create account and operator roles ..." 2>&1 |tee -a $CLUSTER_LOG
@@ -540,6 +541,7 @@ echo "OIDC_ID " $OIDC_ID 2>&1 2>&1 >> $CLUSTER_LOG
 echo "Creating operator-roles" 2>&1 >> $CLUSTER_LOG
 rosa create operator-roles --hosted-cp --prefix $PREFIX --oidc-config-id $OIDC_ID --installer-role-arn $INSTALL_ARN -m auto -y 2>&1 >> $CLUSTER_LOG
 SUBNET_IDS=$PRIV_SUB_2a","$PRIV_SUB_2b","$PRIV_SUB_2c","$PUBLIC_SUB_2a","$PUBLIC_SUB_2b","$PUBLIC_SUB_2c
+SUBNET_IDS=DUMMY
 #
 echo "Creating ROSA HCP cluster " 2>&1 |tee -a $CLUSTER_LOG
 echo "" 2>&1 >> $CLUSTER_LOG
@@ -563,9 +565,47 @@ echo " " 2>&1 |tee -a $CLUSTER_LOG
 Fine
 }
 ########################################################################################################################
+# Checks
+########################################################################################################################
+various_checks(){
+# Check if ROSA CLI is installed
+if [ -x "$(command -v /usr/local/bin/rosa)" ]
+ then
+        if [[ "$(rosa whoami 2>&1)" =~ "User is not logged in to OCM" ]];
+                then
+		echo " "
+		echo " "
+		echo " "
+		echo " "
+		echo " "
+		option_picked "Warning: Before to proceed you must login to OCM/ROSA !"
+		echo " "
+		echo "Please follow this link to download your token from the Red Hat OCM Portal"; echo -e '\e]8;;https://console.redhat.com/openshift/token/rosa/show\e\\https://console.redhat.com/openshift/token/rosa/show\e]8;;\e\\'
+		echo " "
+		echo "Example:  "
+		echo "rosa login --token=\"RtidhhrkjLjhgLjkhUUvuhJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJhZDUyMjdhMy1iY2ZkLTRjZjAtYTdiNi0zOTk4MzVhMDg1NjYifQ.eyJpYXQiOjE3MDQzOTE4NzAsImp0aSI6ImJjZTY1ZjQxLThiZDctNGQ2Ni04MjBkLWFlMTdkZWYxMzJhNiIsImlzcyI6Imh0dHBzOi8vc3NvLnJlZGhhdC5jb20vYXV0aC9yZWFsbXMvcmVkaGF0LWV4dGVybmFsIiwiYXVkIjoiaHR0cHM6Ly9zc28ucmVkaGF0LmNvbS9hdXRoL3JlYWxtcy9yZWRoYXQtZXh0ZXJuYWwiLCJzdWIiOiJmOjUyOGQ3NmZmLWY3MDgtNDNlZC04Y2Q1LWZlMTZmNGZlMGNlNjpyaC1lZS1nbW9sbG8iLCJ0eXAiOiJPZmZsaW5lIiwiYXpwIjoiY2xvdWQtc2VydmljZXMiLCJub25jZSI6IjY1MGYzOGUzLTBhYjgtNGY3NC1hNTQ0LTFkMzZiMjJlYzNmNyIsInNlc3Npb25fc3RhdGUiOiI5MDM3MTAzMS1jOWJlLTRkYjEtYTZhZC1hZTRjNWNmYjZiNDUiLCJzY29wZSI6Im9wZW5pZCBhcGkuaWFtLnNlcnZpY2VfYWNjb3VudHMgb2ZmbGluZV9hY2Nlc3MiLCJzaWQiOiI5MDM3MTAzMS1jOWJlLTRkYjEtYTZhZC1hZTRjNWNmYjZiNDUifQ.Ne600xRwKwkQmjkSt_V6HnhnKTZCGwrubrWj4XkkK5I\""
+		echo " "
+		echo " "
+                Fine
+        else
+                echo "You are logged to OCM/ROSA "
+        fi
+ else
+   ROSA_CLI
+   echo " "
+   option_picked "Warning: Before to proceed you must login to OCM/ROSA !"
+   echo " "
+   echo "Please follow this link to download your token from the Red Hat OCM Portal"; echo -e '\e]8;;https://console.redhat.com/openshift/token/rosa/show\e\\https://console.redhat.com/openshift/token/rosa/show\e]8;;\e\\'
+   echo " "
+   echo " "
+   Fine
+fi
+}
+########################################################################################################################
 # Menu
 ########################################################################################################################
 show_menu(){
+various_checks
 clear
     normal=`echo "\033[m"`
     menu=`echo "\033[36m"` #Blue
