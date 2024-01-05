@@ -279,7 +279,6 @@ echo "Creating the Public Route Table: " $PUBLIC_RT_ID 2>&1 |tee -a $CLUSTER_LOG
 aws ec2 create-route --route-table-id $PUBLIC_RT_ID --destination-cidr-block 0.0.0.0/0 --gateway-id $IGW 2>&1 >> $CLUSTER_LOG
 aws ec2 create-tags --resources $PUBLIC_RT_ID --tags Key=Name,Value=$CLUSTER_NAME-public-rtb 2>&1 >> $CLUSTER_LOG
 
-# CHECK THE CYCLE KEY:VALUES FROM ASSOCIATED ARRAY
 i=1
 for pubsnt in ${!AZ_PAIRED_ARRAY[@]}
 	do
@@ -293,7 +292,8 @@ for pubsnt in ${!AZ_PAIRED_ARRAY[@]}
 	aws ec2 create-tags --resources $EIP_ADDRESS  --resources $NAT_GATEWAY_ID --tags Key=Name,Value=$CLUSTER_NAME-NAT-GW
 	PRIVATE_RT_ID=$(aws ec2 create-route-table --no-cli-pager --vpc-id $VPC_ID_VALUE --query RouteTable.RouteTableId --output text)
 	echo "Creating the Private Route Table: " $PRIVATE_RT_ID 2>&1 |tee -a $CLUSTER_LOG
-	aws ec2 associate-route-table --subnet-id ${AZ_PAIRED_ARRAY[$pubsnt]} --route-table-id $PRIVATE_RT_ID 2>&1 >> $CLUSTER_LOG 2>&1 >> $CLUSTER_LOG
+	aws ec2 create-route --route-table-id $PRIVATE_RT_ID --destination-cidr-block 0.0.0.0/0 --gateway-id $NAT_GATEWAY_ID 2>&1 >> $CLUSTER_LOG
+	aws ec2 associate-route-table --subnet-id ${AZ_PAIRED_ARRAY[$pubsnt]} --route-table-id $PRIVATE_RT_ID 2>&1 >> $CLUSTER_LOG
 	aws ec2 create-tags --resources $PRIVATE_RT_ID $EIP_ADDRESS --tags Key=Name,Value=$CLUSTER_NAME-private-rtb${i} 2>&1 >> $CLUSTER_LOG
 	i=$(($i++1))
 done
@@ -398,7 +398,7 @@ HCP-Public()
 {
 #set -x 
 NOW=$(date +"%y%m%d%H%M")
-CLUSTER_NAME=${CHOICE1:-gm}-$NOW
+CLUSTER_NAME=${CHOICE1:-gm-$NOW}
 INSTALL_DIR=$(pwd)
 CLUSTER_LOG=$INSTALL_DIR/$CLUSTER_NAME.log
 touch $CLUSTER_LOG
@@ -454,7 +454,7 @@ Fine
 function HCP-Private()
 { 
 NOW=$(date +"%y%m%d%H%M")
-CLUSTER_NAME=${CHOICE1:-gm}-$NOW
+CLUSTER_NAME=${CHOICE1:-gm-$NOW}
 INSTALL_DIR=$(pwd)
 CLUSTER_LOG=$INSTALL_DIR/$CLUSTER_NAME.log
 touch $CLUSTER_LOG
@@ -510,7 +510,7 @@ HCP-Public-MultiAZ()
 {
 set -x
 NOW=$(date +"%y%m%d%H%M")
-CLUSTER_NAME=${CHOICE1:-gm}-$NOW
+CLUSTER_NAME=${CHOICE1:-gm-$NOW}
 INSTALL_DIR=$(pwd)
 CLUSTER_LOG=$INSTALL_DIR/$CLUSTER_NAME.log
 touch $CLUSTER_LOG
@@ -540,8 +540,12 @@ echo "Creating the OIDC config" $OIDC_ID 2>&1 |tee -a $CLUSTER_LOG
 echo "OIDC_ID " $OIDC_ID 2>&1 2>&1 >> $CLUSTER_LOG
 echo "Creating operator-roles" 2>&1 >> $CLUSTER_LOG
 rosa create operator-roles --hosted-cp --prefix $PREFIX --oidc-config-id $OIDC_ID --installer-role-arn $INSTALL_ARN -m auto -y 2>&1 >> $CLUSTER_LOG
-SUBNET_IDS=$PRIV_SUB_2a","$PRIV_SUB_2b","$PRIV_SUB_2c","$PUBLIC_SUB_2a","$PUBLIC_SUB_2b","$PUBLIC_SUB_2c
-SUBNET_IDS=DUMMY
+#SUBNET_IDS=$PRIV_SUB_2a","$PRIV_SUB_2b","$PRIV_SUB_2c","$PUBLIC_SUB_2a","$PUBLIC_SUB_2b","$PUBLIC_SUB_2c
+SUBNET_IDS=$(for privsub in ${AZ_PRIV_ARRAY[@]}
+		do
+			printf '%s,' "$privsub"
+		done |sed -e 's/,$//g'
+)
 #
 echo "Creating ROSA HCP cluster " 2>&1 |tee -a $CLUSTER_LOG
 echo "" 2>&1 >> $CLUSTER_LOG
@@ -569,7 +573,7 @@ Fine
 ########################################################################################################################
 various_checks(){
 # Check if ROSA CLI is installed
-if [ -x "$(command -v /usr/local/bin/rosa)" ]
+if [ -x "$(which rosa)" ]
  then
         if [[ "$(rosa whoami 2>&1)" =~ "User is not logged in to OCM" ]];
                 then
@@ -599,6 +603,10 @@ if [ -x "$(command -v /usr/local/bin/rosa)" ]
    echo " "
    echo " "
    Fine
+fi
+# Check if clustername exceeds the limit of 15 chars
+CLUSTER_NAME_LENGTH=$(echo $CLUSTER_NAME|wc -m)
+if [[ $CLUSTER_NAME_LENGTH -gt 15 ]]; then read -p "The cluster name you've chosen is longer than 15 chars, please enter a shoter name" CLUSTER_NAME
 fi
 }
 ########################################################################################################################
