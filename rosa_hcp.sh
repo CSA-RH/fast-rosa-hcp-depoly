@@ -30,8 +30,9 @@
 ############################################################
 # Custom name                                              #
 ############################################################
-CHOICE1=$1
-CHOICE2=$2
+NOW=$(date +"%y%m%d%H%M")
+CLUSTER_NAME=${1:-gm-$NOW}
+PREFIX=${2:-TestManagedHCP}
 ############################################################
 # Delete HCP                                               #
 ############################################################
@@ -397,13 +398,13 @@ fi
 HCP-Public()
 {
 #set -x 
-NOW=$(date +"%y%m%d%H%M")
-CLUSTER_NAME=${CHOICE1:-gm-$NOW}
+#NOW=$(date +"%y%m%d%H%M")
+#CLUSTER_NAME=${CHOICE1:-gm-$NOW}
 INSTALL_DIR=$(pwd)
 CLUSTER_LOG=$INSTALL_DIR/$CLUSTER_NAME.log
 touch $CLUSTER_LOG
 BILLING_ID=$(rosa whoami|grep "AWS Account ID:"|awk '{print $4}')
-PREFIX=${CHOICE2:-TestManagedHCP}
+#PREFIX=${CHOICE2:-TestManagedHCP}
 #
 aws configure
 echo "#"
@@ -453,13 +454,13 @@ Fine
 # 
 function HCP-Private()
 { 
-NOW=$(date +"%y%m%d%H%M")
-CLUSTER_NAME=${CHOICE1:-gm-$NOW}
+#NOW=$(date +"%y%m%d%H%M")
+#CLUSTER_NAME=${CHOICE1:-gm-$NOW}
 INSTALL_DIR=$(pwd)
 CLUSTER_LOG=$INSTALL_DIR/$CLUSTER_NAME.log
 touch $CLUSTER_LOG
 BILLING_ID=$(rosa whoami|grep "AWS Account ID:"|awk '{print $4}')
-PREFIX=${CHOICE2:-TestManagedHCP}
+#PREFIX=${CHOICE2:-TestManagedHCP}
 #
 aws configure
 echo "#"
@@ -510,7 +511,6 @@ HCP-Public-MultiAZ()
 {
 set -x
 NOW=$(date +"%y%m%d%H%M")
-CLUSTER_NAME=${CHOICE1:-gm-$NOW}
 INSTALL_DIR=$(pwd)
 CLUSTER_LOG=$INSTALL_DIR/$CLUSTER_NAME.log
 touch $CLUSTER_LOG
@@ -573,7 +573,7 @@ Fine
 ########################################################################################################################
 various_checks(){
 # Check if ROSA CLI is installed
-if [ -x "$(which rosa)" ]
+if [ "$(which rosa 2>&1 > /dev/null;echo $?)" == "0" ]
  then
         if [[ "$(rosa whoami 2>&1)" =~ "User is not logged in to OCM" ]];
                 then
@@ -604,10 +604,13 @@ if [ -x "$(which rosa)" ]
    echo " "
    Fine
 fi
+}
+cluster_name_check (){
 # Check if clustername exceeds the limit of 15 chars
-CLUSTER_NAME_LENGTH=$(echo $CLUSTER_NAME|wc -m)
-if [[ $CLUSTER_NAME_LENGTH -gt 15 ]]; then read -p "The cluster name you've chosen is longer than 15 chars, please enter a shoter name" CLUSTER_NAME
-fi
+while [[ "${#CLUSTER_NAME}" -gt 15 ]]
+        do
+		read -r -p "The cluster name you've chosen is longer than 15 chars ($CLUSTER_NAME is ${#CLUSTER_NAME}), please enter a shorter name using only lowercase, numbers and hyphens (-): " CLUSTER_NAME
+  done
 }
 ########################################################################################################################
 # Menu
